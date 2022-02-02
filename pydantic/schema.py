@@ -1043,7 +1043,7 @@ def get_annotation_with_constraints(annotation: Any, field_info: FieldInfo) -> T
                 return type_
 
             if origin is Annotated:
-                return go(args[0])
+                return Annotated[(go(args[0]), *args[1:])]
             if is_union(origin):
                 return Union[tuple(go(a) for a in args)]  # type: ignore
 

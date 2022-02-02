@@ -242,6 +242,43 @@ def test_discriminated_annotated_union():
     assert isinstance(m.pet, WhiteCat)
 
 
+def test_discriminated_annotated_union_list():
+    class BlackCat(BaseModel):
+        color: Literal['black']
+        black_name: str
+
+    class WhiteCat(BaseModel):
+        color: Literal['white']
+        white_name: str
+
+    Cat = Annotated[Union[BlackCat, WhiteCat], Field(discriminator='color')]
+
+    class TwoCats(BaseModel):
+        cats: list[Cat] = Field(min_items=2, max_items=2)
+
+    with pytest.raises(ValidationError) as exc_info:
+        TwoCats.parse_obj({'cats': [{'black_name': 'felix'}, {'color': 'white', 'white_name': 'Snowball'}]})
+    assert exc_info.value.errors() == [
+        {
+            'ctx': {'discriminator_key': 'color'},
+            'loc': ('cats', 0),
+            'msg': "Discriminator 'color' is missing in value",
+            'type': 'value_error.discriminated_union.missing_discriminator',
+        }
+    ]
+
+    with pytest.raises(ValidationError) as exc_info:
+        TwoCats.parse_obj({'cats': [{'color': 'black', 'black_name': 'felix'}]})
+    assert exc_info.value.errors() == [
+        {
+            'ctx': {'limit_value': 2},
+            'loc': ('cats',),
+            'msg': 'ensure this value has at least 2 items',
+            'type': 'value_error.list.min_items',
+        }
+    ]
+
+
 def test_discriminated_union_basemodel_instance_value():
     class A(BaseModel):
         l: Literal['a']
